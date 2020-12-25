@@ -171,9 +171,21 @@ int logicalShift(int x, int n) {
  *   Rating: 4
  */
 int bitCount(int x) {
-	//TODO
-	int ans = 0;
-	return ans;
+	int count;
+    int tmpMask1 = (0x55)|(0x55<<8);
+    int mask1 = (tmpMask1)|(tmpMask1<<16);
+    int tmpMask2 = (0x33)|(0x33<<8);
+    int mask2 = (tmpMask2)|(tmpMask2<<16);
+    int tmpMask3 = (0x0f)|(0x0f<<8);
+    int mask3 = (tmpMask3)|(tmpMask3<<16);
+    int mask4 = (0xff)|(0xff<<16);
+    int mask5 = (0xff)|(0xff<<8);
+    count = (x&mask1)+((x>>1)&mask1);
+    count = (count&mask2)+((count>>2)&mask2);
+    count = (count + (count >> 4)) & mask3;
+    count = (count + (count >> 8)) & mask4;
+    count = (count + (count >> 16)) & mask5;
+	return count;
 }
 /* 
  * bang - Compute !x without using !
@@ -249,7 +261,11 @@ int isPositive(int x) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+	int sigX = x>>31;
+	int sigY = y>>31;
+	int same = !(sigX ^ sigY);
+	// x-y-1对于同号一定不会溢出
+	return (!same & sigX) | (same & (x+(~y))>>31);
 }
 /*
  * ilog2 - return floor(log base 2 of x), where x > 0
@@ -259,7 +275,34 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4
  */
 int ilog2(int x) {
-  return 2;
+	int ans = 0, sign, shift;
+
+	// 二分定位最高位
+	// shift为在局限区间内的偏移量
+	sign = !!(x>>16);
+	shift = sign<<4;
+	x = x>>shift;
+	ans = ans + shift;
+
+	sign = !!(x>>8);
+	shift = sign<<3;
+	x = x>>shift;
+	ans = ans + shift;
+
+	sign = !!(x>>4);
+	shift = sign<<2;
+	x = x>>shift;
+	ans = ans + shift;
+
+	sign = !!(x>>2);
+	shift = sign<<1;
+	x = x>>shift;
+	ans = ans + shift;
+
+	sign = !!(x>>1);
+	ans = ans + sign;
+	
+	return ans;
 }
 /* 
  * float_neg - Return bit-level equivalent of expression -f for
@@ -292,7 +335,20 @@ unsigned float_neg(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
-  return 2;
+	unsigned sign = x & (1<<31);
+	unsigned exp = 0, frac = 0, round = 0;
+	unsigned absX = sign ? ~x + 1 : x;
+	unsigned tmp = absX;
+	// 最高位
+	while((tmp = tmp>>1))
+		++exp;
+	frac = absX << (32-exp);
+	round = frac << 23 >> 23;
+	frac = frac >> 9;
+	if (round > 0x100) round = 1;
+	else if (round < 0x100) round = 0;
+	else round = frac & 1;
+	return x ? (sign | ((exp + 0x7f) << 23) | frac) + round : 0;
 }
 /* 
  * float_twice - Return bit-level equivalent of expression 2*f for
@@ -306,5 +362,12 @@ unsigned float_i2f(int x) {
  *   Rating: 4
  */
 unsigned float_twice(unsigned uf) {
-  return 2;
+	unsigned sign = 1 << 31;
+	unsigned isNormalized = uf << 1 >> 24;
+	unsigned isSpecial = isNormalized == 0xFF;
+	if (isSpecial || uf == 0 || uf == sign)
+		return uf;
+	if (isNormalized)
+		return uf + (1<<23);
+	return (uf<<1) | (uf & sign);
 }
