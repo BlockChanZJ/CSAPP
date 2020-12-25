@@ -183,8 +183,8 @@ int bitCount(int x) {
  *   Rating: 4 
  */
 int bang(int x) {
-	//TODO
-	return x & 1;
+	// 除了0之外 x | -x符号位都为1
+	return ~((x | (~x+1)) >> 31) & 1;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -217,7 +217,9 @@ int fitsBits(int x, int n) {
  *   Rating: 2
  */
 int divpwr2(int x, int n) {
-    return 2;
+	int mask = x>>31;
+	int bias = mask & ((1<<n) + ~0);
+	return (x+bias)>>n;
 }
 /* 
  * negate - return -x 
