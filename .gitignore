@@ -1,1 +1,4 @@
 *.tar
+.idea
+cmake-build-debug
+CMakeList.txt

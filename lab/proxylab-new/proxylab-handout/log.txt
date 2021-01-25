@@ -1,0 +1,161 @@
+
+**********************************
+**********************************
+
+
+
+listenfd: 3
+connfd: 4
+read client buf: GET http://localhost:9118/home.html HTTP/1.1
+
+strncasecmp : (http://localhost:9118/home.html, http://)
+client host: 
+client port: 
+client path: 
+client uri : http://localhost:9118/home.html
+client host : 
+client port : 
+client path : 
+
+**********************************
+**********************************
+
+
+
+listenfd: 3
+connfd: 4
+read client buf: GET http://localhost:23671/nop-file.txt HTTP/1.1
+
+strncasecmp : (http://localhost:23671/nop-file.txt, http://)
+client host: 
+client port: 
+client path: 
+client uri : http://localhost:23671/nop-file.txt
+client host : 
+client port : 
+client path : 
+
+**********************************
+**********************************
+
+
+
+listenfd: 3
+connfd: 4
+read client buf: GET http://localhost:24903/tiny.c HTTP/1.1
+
+strncasecmp : (http://localhost:24903/tiny.c, http://)
+client host: 
+client port: 
+client path: 
+client uri : http://localhost:24903/tiny.c
+client host : 
+client port : 
+client path : 
+
+**********************************
+**********************************
+
+
+
+listenfd: 3
+connfd: 4
+read client buf: GET http://localhost:28487/home.html HTTP/1.1
+
+parse_uri's uri: http://localhost:28487/home.html
+client host: localhost
+client port: 28487
+client path: /home.html
+connfd: 4
+read client buf: GET http://localhost:28487/csapp.c HTTP/1.1
+
+parse_uri's uri: http://localhost:28487/csapp.c
+client host: localhost
+client port: 28487
+client path: /csapp.c
+connfd: 4
+read client buf: GET http://localhost:28487/tiny.c HTTP/1.1
+
+parse_uri's uri: http://localhost:28487/tiny.c
+client host: localhost
+client port: 28487
+client path: /tiny.c
+connfd: 4
+read client buf: GET http://localhost:28487/godzilla.jpg HTTP/1.1
+
+parse_uri's uri: http://localhost:28487/godzilla.jpg
+client host: localhost
+client port: 28487
+client path: /godzilla.jpg
+connfd: 4
+read client buf: GET http://localhost:28487/tiny HTTP/1.1
+
+parse_uri's uri: http://localhost:28487/tiny
+client host: localhost
+client port: 28487
+client path: /tiny
+
+**********************************
+**********************************
+
+
+
+listenfd: 3
+connfd: 4
+read client buf: GET http://localhost:29109/nop-file.txt HTTP/1.1
+
+parse_uri's uri: http://localhost:29109/nop-file.txt
+client host: localhost
+client port: 29109
+client path: /nop-file.txt
+
+**********************************
+**********************************
+
+
+
+listenfd: 3
+connfd: 4
+read client buf: GET http://localhost:3004/tiny.c HTTP/1.1
+
+parse_uri's uri: http://localhost:3004/tiny.c
+client host: localhost
+client port: 3004
+client path: /tiny.c
+connfd: 4
+read client buf: GET http://localhost:3004/home.html HTTP/1.1
+
+parse_uri's uri: http://localhost:3004/home.html
+client host: localhost
+client port: 3004
+client path: /home.html
+connfd: 4
+read client buf: GET http://localhost:3004/csapp.c HTTP/1.1
+
+parse_uri's uri: http://localhost:3004/csapp.c
+client host: localhost
+client port: 3004
+client path: /csapp.c
+connfd: 4
+read client buf: GET http://localhost:3004/home.html HTTP/1.1
+
+parse_uri's uri: http://localhost:3004/home.html
+client host: localhost
+client port: 3004
+client path: /home.html
+client uri : http://localhost
+client host : localhost
+client port : 3004
+client path : /home.html
+client uri : http://localhost
+client host : localhost
+client port : 3004
+client path : /csapp.c
+client uri : http://localhost
+client host : localhost
+client port : 3004
+client path : /home.html
+client uri : http://localhost
+client host : localhost
+client port : 3004
+client path : /tiny.c
