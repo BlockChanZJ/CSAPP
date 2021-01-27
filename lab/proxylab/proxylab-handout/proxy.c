@@ -1,10 +1,10 @@
 #include <stdio.h>
 
 #include "csapp.h"
+#include "cache.h"
 
 /* Recommended max cache and object sizes */
-#define MAX_CACHE_SIZE 1049000
-#define MAX_OBJECT_SIZE 102400
+
 #define HOSTNAME_MAX_LEN 63
 #define PORT_MAX_LEN 10
 #define HEADER_NAME_MAX_LEN 32
@@ -37,6 +37,10 @@ typedef struct {
     char value[HEADER_VALUE_MAX_LEN];
 } ReqHeader;
 
+int reader_cnt = 0;
+sem_t cnt_mutex, rw_mutex;
+Cache cache;
+
 void parse_uri(char *uri, ReqLine *line);
 void parse_request(int fd, ReqLine *line, ReqHeader *headers, int *num_hds);
 ReqHeader parse_header(char *line);
@@ -47,15 +51,6 @@ void *thread (void *vargp);
 
 
 int main(int argc, char **argv) {
-	FILE *fo;
-#ifdef DEBUG
-	fo = fopen("log.txt","a");
-	fprintf(fo, "\n");
-	fprintf(fo, "**********************************\n");
-	fprintf(fo, "**********************************\n");
-	fprintf(fo, "\n\n\n");
-	fclose(fo);
-#endif
     int listenfd, *connfd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
@@ -70,12 +65,8 @@ int main(int argc, char **argv) {
     // proxy is a server for client
     // proxy listen client
     listenfd = Open_listenfd(argv[1]);
-#ifdef DEBUG
-   	fo = fopen("log.txt","a+");
-    fprintf(fo, "listenfd: %d\n",listenfd);
-	fclose(fo);
-#endif
 
+	init_cache(&cache);
 
 	while (1) {
         clientlen = sizeof (clientaddr);
@@ -83,11 +74,6 @@ int main(int argc, char **argv) {
         // proxy accept client
         connfd = malloc(sizeof(int));
         *connfd = Accept(listenfd, (SA*)&clientaddr, &clientlen);
-#ifdef DEBUG
-   	fo = fopen("log.txt","a+");
-	fprintf(fo, "connfd: %d\n",*connfd);
-	fclose(fo);
-#endif
         // get addr, hostname, port
         Getnameinfo((SA*)&clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n",hostname,port);
@@ -113,28 +99,29 @@ void* thread (void* vargp) {
 }
 
 void doit(int fd) {
-	FILE *fo;
-    char buf[MAXLINE], uri[MAXLINE];
+    char buf[MAXLINE], uri[MAXLINE], object_buf[MAX_CACHE_SIZE];
     rio_t rio;
     int connfd;
     ReqLine request_line;
     ReqHeader headers[20];
     int num_hds; // headers number
-    int n;
+    int n, exceed = 0, total_size = 0;
+    CacheLine *cacheLine = NULL;
 
     // read client request
     parse_request(fd, &request_line, headers, &num_hds);
-#ifdef DEBUG
-	fo = fopen("log.txt","a+");
-	fprintf(fo, "client host: %s\n",request_line.host);
-	fprintf(fo, "client port: %s\n",request_line.port);
-	fprintf(fo, "client path: %s\n",request_line.path);
-	fclose(fo);
-#endif
 
     // construct uri = host + path
     strcpy(uri, request_line.host);
     strcpy(uri+strlen(uri), request_line.path);
+
+    cacheLine = read_cache(&cache,uri);
+    if (cacheLine != NULL) {
+        Rio_writen(fd, cacheLine->content, cacheLine->size);
+        fprintf(stdout, "read %s in cache\n",uri);
+        fflush(stdout);
+        return;
+    }
 
     // construct request and send to server
     connfd = send_to_server(&request_line, headers, num_hds);
@@ -142,8 +129,15 @@ void doit(int fd) {
     // proxy read server's message and write it to client
     Rio_readinitb(&rio, connfd);
 
+
     while ((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0) {
         Rio_writen(fd, buf, n);
+        strcpy(object_buf + total_size, buf);
+        total_size += n;
+    }
+
+    if (total_size < MAX_CACHE_SIZE) {
+        write_cache(&cache, uri, object_buf, total_size);
     }
 	Close(connfd);
 }
@@ -151,30 +145,15 @@ void doit(int fd) {
 void parse_request(int fd, ReqLine *line, ReqHeader *headers, int *num_hds) {
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
     rio_t rio;
-	FILE *fo;
 
     // read client request
     Rio_readinitb(&rio, fd);
     if (Rio_readlineb(&rio, buf, MAXLINE) == 0)
         return;
 
-#ifdef DEBUG
-	fo = fopen("log.txt", "a+"); 
-	fprintf(fo, "read client buf: %s\n",buf);
-	fclose(fo);
-#endif
-
     // parse request line
     sscanf(buf, "%s %s %s", method, uri, version);
     parse_uri(uri, line);
-
-#ifdef DEBUG
-	fo = fopen("log.txt", "a+");
-	fprintf(fo, "client uri : %s\n",uri);
-	fprintf(fo, "client host : %s\n", line->host);
-	fprintf(fo, "client port : %s\n", line->port);
-	fprintf(fo, "client path : %s\n", line->path);
-#endif
 
     // parse request headers
     *num_hds = 0;
@@ -186,21 +165,11 @@ void parse_request(int fd, ReqLine *line, ReqHeader *headers, int *num_hds) {
 }
 
 void parse_uri(char *uri, ReqLine *line) {
-	FILE *fo;
     if (strncasecmp(uri, "http://", 7)) {
-#ifdef DEBUG
-	fo = fopen("log.txt", "a+");
-	fprintf(fo, "strncasecmp : (%s, http://) \n", uri);
-	fclose(fo);
-#endif
         fprintf(stderr, "error: invalid uri!\n");
         return;
     }
-#ifdef DEBUG
-	fo = fopen("log.txt", "a+");
-	fprintf(fo, "parse_uri's uri: %s\n",uri);
-	fclose(fo);
-#endif 
+
     uri += 7;
     char *c = strstr(uri, ":");
     *c = '\0';
