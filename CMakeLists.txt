@@ -7,6 +7,6 @@ set(CMAKE_CXX_STANDARD 14)
 #include_directories(lab/proxylab)
 
 add_executable(CSAPP
-        lab/proxylab-new/proxylab-handout/csapp.c
-        lab/proxylab-new/proxylab-handout/csapp.h
-        lab/proxylab-new/proxylab-handout/proxy.c)
+        lab/proxylab/proxylab-handout/csapp.c
+        lab/proxylab/proxylab-handout/csapp.h
+        lab/proxylab/proxylab-handout/proxy.c)

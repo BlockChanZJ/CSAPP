@@ -43,8 +43,6 @@ ReqHeader parse_header(char *line);
 void doit (int fd);
 int send_to_server(ReqLine *line, ReqHeader *headers, int num_hds);
 
-void *thread (void *vargp);
-
 
 int main(int argc, char **argv) {
 	FILE *fo;
@@ -56,11 +54,10 @@ int main(int argc, char **argv) {
 	fprintf(fo, "\n\n\n");
 	fclose(fo);
 #endif
-    int listenfd, *connfd;
+    int listenfd, connfd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
-    pthread_t tid;
 
     if (argc != 2) {
         fprintf(stderr, "usage: %s <port number>\n",argv[0]);
@@ -79,42 +76,30 @@ int main(int argc, char **argv) {
 
 	while (1) {
         clientlen = sizeof (clientaddr);
-
         // proxy accept client
-        connfd = malloc(sizeof(int));
-        *connfd = Accept(listenfd, (SA*)&clientaddr, &clientlen);
+        connfd = Accept(listenfd, (SA*)&clientaddr, &clientlen);
 #ifdef DEBUG
    	fo = fopen("log.txt","a+");
-	fprintf(fo, "connfd: %d\n",*connfd);
+	fprintf(fo, "connfd: %d\n",connfd);
 	fclose(fo);
 #endif
         // get addr, hostname, port
         Getnameinfo((SA*)&clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n",hostname,port);
 
-
-        Pthread_create(&tid, NULL, thread, (void*)connfd);
-
+        // 1.read client request and write it to server
+        // 2.read server message and write it to client
+        doit(connfd);
+        // close and wait next request of client
+        Close(connfd);
     }
 
     return 0;
 }
 
-void* thread (void* vargp) {
-    int connfd = *(int*)vargp;
-    Free(vargp);
-    Pthread_detach(Pthread_self());
-    // 1.read client request and write it to server
-    // 2.read server message and write it to client
-    doit(connfd);
-    // close and wait next request of client
-    Close(connfd);
-    return NULL;
-}
-
 void doit(int fd) {
 	FILE *fo;
-    char buf[MAXLINE], uri[MAXLINE];
+    char buf[MAXLINE], uri[MAXLINE], object_buf[MAX_OBJECT_SIZE];
     rio_t rio;
     int connfd;
     ReqLine request_line;
@@ -190,7 +175,7 @@ void parse_uri(char *uri, ReqLine *line) {
     if (strncasecmp(uri, "http://", 7)) {
 #ifdef DEBUG
 	fo = fopen("log.txt", "a+");
-	fprintf(fo, "strncasecmp : (%s, http://) \n", uri);
+	fprintf(fo, "strncasecmp : (%s, http://) %d\n", uri);
 	fclose(fo);
 #endif
         fprintf(stderr, "error: invalid uri!\n");
@@ -227,15 +212,15 @@ ReqHeader parse_header(char *line) {
 }
 
 int send_to_server(ReqLine *line, ReqHeader *headers, int num_hds) {
-    int serverfd, i;
+    int clientfd, i;
     char buf[MAXLINE], *buf_head = buf;
     rio_t rio;
 
     // proxy connect server as a client
-    serverfd = Open_clientfd(line->host, line->port);
+    clientfd = Open_clientfd(line->host, line->port);
 
     // construct request to server
-    Rio_readinitb(&rio, serverfd);
+    Rio_readinitb(&rio, clientfd);
     sprintf(buf_head, "GET %s HTTP/1.0\r\n", line->path);
     buf_head = buf + strlen(buf);
     for (i = 0; i < num_hds; ++i) {
@@ -245,7 +230,7 @@ int send_to_server(ReqLine *line, ReqHeader *headers, int num_hds) {
     sprintf(buf_head, "\r\n");
 
     // write to server
-    Rio_writen(serverfd, buf, MAXLINE);
+    Rio_writen(clientfd, buf, MAXLINE);
 
-    return serverfd;
+    return clientfd;
 }
